@@ -53,15 +53,22 @@ def main():
     clientSocket = socket(AF_INET, SOCK_STREAM) # TCP socket
     # COMPLETE
 
-    HOST = # COMPLETE
-    # COMPLETE
+    #Using FIU server
+    HOST = "inet.cs.fiu.edu"
+    PORT = 21
+
+    #Username is "demo" and password is "demopass"
+
+    clientSocket.connect((HOST, PORT))
 
     dataIn = receiveData(clientSocket)
     print(dataIn)
 
     status = 0
     
-    if dataIn.startswith(""):
+    #Connection should be successful
+    
+    if dataIn.startswith("220"):
         status = 220
         print("Sending username")
         # COMPLETE
@@ -77,13 +84,14 @@ def main():
             if dataIn.startswith(""):
                 status = 230
 
+    #COMMENTED OUT FOR NOW VVVVVVVVVVVV
        
-    if status == 230:
-        # It is your choice whether to use ACTIVE or PASV mode. In any event:
-        # COMPLETE
-        pasvStatus, dataSocket = modePASV(clientSocket)
-        if pasvStatus == 227:
-            # COMPLETE
+    # if status == 230:
+    #     # It is your choice whether to use ACTIVE or PASV mode. In any event:
+    #     # COMPLETE
+    #     pasvStatus, dataSocket = modePASV(clientSocket)
+    #     if pasvStatus == 227:
+
     
     print("Disconnecting...")
     
