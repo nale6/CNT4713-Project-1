@@ -196,6 +196,7 @@ def main():
       if pasvStatus == 227:
           # COMPLETE
           print("PASV mode enabled successfully.")
+          status = 220
       else:
         print("Failed to enter PASV mode.")
 
@@ -205,16 +206,15 @@ def main():
   #for the list "parameters", parameters[0] is the command itself, paramaters[1] is the filename or pathname used as the parameter
   #The corresponding function (that matches the command that the user has typed in) is called, with the value of parameters[1] being used for the filename or pathname field for that function
   #Some of the functions called here use placeholder names, as Sabrina is responsible for writing a few of these functions (we do not know their names yet). We will fix Sabrina's functions for cross-compatibility with this code, if needed
-  while(status == 230):
-      command = input
+  while(status == 220):
+      command = input("Enter command: ")
       if command.startswith("ls"):
           list(clientSocket)
       
       elif command.startswith("cd"):
-
           parameters = command.split()
           pathname = parameters[1]
-          cd(clientSocket, pathname)
+          changeDirectory(clientSocket, pathname)
 
       elif command.startswith("get"):
           parameters = command.split()
@@ -224,12 +224,12 @@ def main():
       elif command.startswith("put"):
           parameters = command.split()
           filename = parameters[1]
-          put(clientSocket, filename)
+          putFile(clientSocket, filename)
           
       elif command.startswith("delete"):
           parameters = command.split()
           filename = parameters[1]
-          delete(clientSocket, filename)
+          deleteFile(clientSocket, filename)
 
       #This function closes the FTP connection and terminates the loop (ending the input prompt and leading to program termination)
       elif command.startswith("quit"):
