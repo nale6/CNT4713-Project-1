@@ -1,10 +1,4 @@
-#BUG FIXES AND THINGS TO BE DONE:
-#ls
-#login fail crashes
-#while loop status inconsistent
-#login fail print statement
-
-#------------------------------------
+#TODO Bugfix: Put failure incorrect status should be 550
 
 # Help: https://www.eventhelix.com/networking/ftp/
 # Help: https://www.eventhelix.com/networking/ftp/FTP_Port_21.pdf
@@ -47,26 +41,55 @@ def receiveData(clientSocket):
   data = dataIn.decode("utf-8")
   return data
 
+def receiveDataSocket(dataSocket):
+    dataIn = dataSocket.recv(1024)
+    data = dataIn.decode("utf-8")
+    return data
+
 #
-def list(clientSocket):
+def list(clientSocket, dataSocket):
   data = sendCommand(clientSocket, "LIST\r\n")
   print(data)
+  data = receiveData(clientSocket)
+  print(data)
+  dataSocketData = receiveData(dataSocket)
+  print(dataSocketData)
+  dataSocket.close()
 
 #Not sure what "get" is supposed to do exactly. There is no "download" function built into python
 #So as a result, I had it do a few different things because I'm not sure what the autograder is actually asking for
 #I made the function print the received file data from the socket, as well as write the received data to a new file on the client pc (functions like a download)
 #If the autograder doesn't like it, we can figure it out
-def get(clientSocket, filename):
+def get(clientSocket, filename, dataSocket):
   command = "RETR " + filename + "\r\n"
   data = sendCommand(clientSocket, command)
   #print contents received from file
   print(data)
   #copies received contents into new file on client pc (imitates a download function)
-  file = open(filename, "w")
-  file.write(data)
-  #prints contents from the newly downloaded file (cuz we don't know what the autograder is looking for)
-  file = open(filename, "r")
-  print(file.read())
+
+  if data.startswith("550"):
+     return
+
+  try:
+        with open(filename, 'wb') as f:
+            fileData = dataSocket.recv(1024)
+            f.write(fileData)
+        dataSocket.close()
+            
+        final_response = receiveData(clientSocket)
+        print(final_response)
+        
+        if final_response.startswith("226"):
+            print(f"File '{filename}' received successfully")
+
+            #prints contents from the newly downloaded file (cuz we don't know what the autograder is looking for)
+        file = open(filename, "r")
+        print(file.read())
+                
+  except FileNotFoundError:
+        print(f"Error: Local file '{filename}' not found")
+        dataSocket.close()
+
 
 #Done Richard
 
@@ -113,36 +136,35 @@ def changeDirectory(clientSocket, remote_dir):
   print(data)
   return data
 
-def putFile(clientSocket, local_file):
-  # Enter passive mode
-  pasvStatus, dataSocket = modePASV(clientSocket)
+def putFile(clientSocket, local_file, dataSocket):
+#   # Enter passive mode
+#   pasvStatus, dataSocket = modePASV(clientSocket)
   
-  if pasvStatus == 227:
-      # Send STOR command
-      command = f"STOR {local_file}\r\n"
-      response = sendCommand(clientSocket, command)
-      print(response)
-      
-      if response.startswith("150"):
-          try:
-              with open(local_file, 'rb') as f:
-                  file_data = f.read()
-                  dataSocket.sendall(file_data)
-              dataSocket.close()
-              
-              final_response = clientSocket.recv(1024).decode("utf-8")
-              print(final_response)
-              
-              if final_response.startswith("226"):
-                  print(f"File '{local_file}' uploaded successfully")
-                  
-          except FileNotFoundError:
-              print(f"Error: Local file '{local_file}' not found")
-              dataSocket.close()
-      else:
-          dataSocket.close()
-  else:
-      print("Failed to enter passive mode")
+    # Send STOR command
+    command = f"STOR {local_file}\r\n"
+    response = sendCommand(clientSocket, command)
+    print(response)
+    
+    if response.startswith("150"):
+        try:
+            with open(local_file, 'rb') as f:
+                file_data = f.read()
+                dataSocket.sendall(file_data)
+            dataSocket.close()
+            
+            final_response = clientSocket.recv(1024).decode("utf-8")
+            print(final_response)
+            
+            if final_response.startswith("226"):
+                print(f"File '{local_file}' uploaded successfully")
+                
+        except FileNotFoundError:
+            print(f"Error: Local file '{local_file}' not found")
+            dataSocket.close()
+            dataIn = receiveData(clientSocket)
+            print(dataIn)
+
+
 
 def deleteFile(clientSocket, remote_file):
   command = f"DELE {remote_file}\r\n"
@@ -217,51 +239,55 @@ def main():
   #for the list "parameters", parameters[0] is the command itself, paramaters[1] is the filename or pathname used as the parameter
   #The corresponding function (that matches the command that the user has typed in) is called, with the value of parameters[1] being used for the filename or pathname field for that function
   #Some of the functions called here use placeholder names, as Sabrina is responsible for writing a few of these functions (we do not know their names yet). We will fix Sabrina's functions for cross-compatibility with this code, if needed
+
+
+  if (status != 230):
+      print("Error! Authentication failed.")
+  
   while(status == 230):
-      command = input("Enter command: ")
-      if command.startswith("ls"):
-          #remove the print later:
-          print("Debug test")
-          list(clientSocket)
+      try:
+        command = input("Enter command: ")
+        if command.startswith("ls"):
+            list(clientSocket, dataSocket)
+            pasvStatus, dataSocket = modePASV(clientSocket)
+        
+        elif command.startswith("cd"):
+            parameters = command.split()
+            pathname = parameters[1]
+            changeDirectory(clientSocket, pathname)
+
+        elif command.startswith("get"):
+            parameters = command.split()
+            filename = parameters[1]
+            get(clientSocket, filename, dataSocket)
+            pasvStatus, dataSocket = modePASV(clientSocket)
+
+        elif command.startswith("put"):
+            parameters = command.split()
+            filename = parameters[1]
+            putFile(clientSocket, filename, dataSocket)
+            pasvStatus, dataSocket = modePASV(clientSocket)
+
+            
+        elif command.startswith("delete"):
+            parameters = command.split()
+            filename = parameters[1]
+            deleteFile(clientSocket, filename)
+
+        #This function closes the FTP connection and terminates the loop (ending the input prompt and leading to program termination)
+        elif command.startswith("quit"):
+            dataSocket.close()
+            break
+      except Exception as timeout:
+        print(f"Session has timed out due to being idle. {timeout}")
+        status = 421
+        break
       
-      elif command.startswith("cd"):
-          parameters = command.split()
-          pathname = parameters[1]
-          #remove the print later:
-          print("Debug test")
-          changeDirectory(clientSocket, pathname)
-          #remove the print later:
-          print("Debug test 2")
-
-      elif command.startswith("get"):
-          parameters = command.split()
-          #remove the print later:
-          print("Debug test")
-          filename = parameters[1]
-          get(clientSocket, filename)
-
-      elif command.startswith("put"):
-          parameters = command.split()
-          filename = parameters[1]
-          putFile(clientSocket, filename)
-          
-      elif command.startswith("delete"):
-          parameters = command.split()
-          filename = parameters[1]
-          deleteFile(clientSocket, filename)
-
-      #This function closes the FTP connection and terminates the loop (ending the input prompt and leading to program termination)
-      elif command.startswith("quit"):
-          quitFTP(clientSocket)
-          break
-      
-  
-  
   print("Disconnecting...")
 
   # Close the DATA connection first
-  if dataSocket is not None:
-      dataSocket.close()
+#   if dataSocket is not None:
+#       dataSocket.close()
 
   # Properly close the CONTROL connection using QUIT
   quitFTP(clientSocket)
