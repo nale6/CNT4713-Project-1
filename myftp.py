@@ -1,13 +1,9 @@
-#TODO Bugfix: Put failure incorrect status should be 550
-
 # Help: https://www.eventhelix.com/networking/ftp/
 # Help: https://www.eventhelix.com/networking/ftp/FTP_Port_21.pdf
 # Help: https://realpython.com/python-sockets/
 # Help: PASV mode may be easier in the long run. Active mode works 
 # Reading: https://unix.stackexchange.com/questions/93566/ls-command-in-ftp-not-working
 # Reading: https://stackoverflow.com/questions/14498331/what-should-be-the-ftp-response-to-pasv-command
-
-#This is a duplicate of the code
 
 #import socket module
 from socket import *
@@ -181,7 +177,6 @@ def main():
      sys.exit(1)
 
   username = input("Enter the username: ")
-  password = input("Enter the password: ")
 
   clientSocket = socket(AF_INET, SOCK_STREAM) # TCP socket
   # COMPLETE
@@ -212,6 +207,9 @@ def main():
       #clientSocket.sendall(command.encode("utf-8"))
       #dataIn = receiveData(clientSocket)
       print(dataIn)
+
+
+  password = input("Enter the password: ")
 
   print("Sending password")
   if dataIn.startswith("331"):
